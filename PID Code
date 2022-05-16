@@ -1,0 +1,54 @@
+#include <ECE3.h> // Used for encoder functionality
+uint16_t sensorValues[8];
+float errorValues[8];
+const int left_nslp_pin = 31;
+const int left_dir_pin  = 29;
+const int left_pwm_pin  = 40;
+
+const int right_nslp_pin = 11;
+const int right_dir_pin  = 30;
+const int right_pwm_pin  = 39;
+
+
+void setup() {
+  // put your setup code here, to run once:
+  ECE3_Init();
+  errorValues[0] = -7.36;
+  errorValues[1] = -977.75;
+  errorValues[2] = -2634.53;
+  errorValues[3] = -1315.49;
+  errorValues[4]= -617.54;
+  errorValues[5] = -386.08;
+  errorValues[6] = 309.68;
+  errorValues[7] = 1427.16;
+  Serial.begin(9600); // set the data rate in bits per second for serial data transmission
+  pinMode(left_nslp_pin,OUTPUT);
+  pinMode(left_dir_pin,OUTPUT);
+  pinMode(left_pwm_pin,OUTPUT);
+  pinMode(right_nslp_pin,OUTPUT);
+  pinMode(right_dir_pin,OUTPUT);
+  pinMode(right_pwm_pin,OUTPUT);
+
+  digitalWrite(left_dir_pin,LOW);
+  digitalWrite(left_nslp_pin,HIGH);
+  digitalWrite(right_dir_pin,LOW);
+  digitalWrite(right_nslp_pin,HIGH);
+  analogWrite(left_pwm_pin, 100);
+  analogWrite(right_pwm_pin, 100);
+  delay(2000);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  ECE3_read_IR(sensorValues);
+  float error = 0;
+  float k_d = .3;
+  float k_p = 100;
+
+  for(int i = 0; i = 8; i++)
+    error += errorValues[i]*sensorValues[i]; 
+  analogWrite(left_pwm_pin, k_p + error*k_d);
+  digitalWrite(left_dir_pin, error*-1/abs(error));
+  analogWrite(right_pwm_pin, k_p - error*k_d);
+  digitalWrite(right_dir_pin, error/abs(error));
+}
