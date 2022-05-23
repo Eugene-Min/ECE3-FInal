@@ -21,6 +21,7 @@ float base_motor_left = 75;
 int count = 0;  
 int sum = 0; 
 float difference = 0;
+float pastSum = 0; 
 
 void setup() {
   // put your setup code here, to run once:
@@ -73,17 +74,21 @@ void setup() {
 void turnAround(){
   analogWrite(right_pwm_pin, 0);
   analogWrite(left_pwm_pin, 0);
-  int goalEncoderCount_right = getEncoderCount_right()+180;
-  int goalEncoderCount_left = getEncoderCount_left()+180;
-  delay(100);
-  analogWrite(right_pwm_pin,base_motor_right);
-  analogWrite(left_pwm_pin, base_motor_left);
+  int goalEncoderCount_right = getEncoderCount_right()+360;
+  int goalEncoderCount_left = getEncoderCount_left()+360;
+  analogWrite(right_pwm_pin,255);
+  analogWrite(left_pwm_pin, 255);
   digitalWrite(right_dir_pin, LOW);
   digitalWrite(left_dir_pin, HIGH);
-  while((goalEncoderCount_right != getEncoderCount_right()) || (goalEncoderCount_left != getEncoderCount_left()))
+  while((goalEncoderCount_right >= getEncoderCount_right()) || (goalEncoderCount_left >= getEncoderCount_left()))
   {
-     
+    Serial.print("Goal:");
+    Serial.print(goalEncoderCount_right);
+    Serial.println();
+    Serial.println(getEncoderCount_right());  
+    delay(50);  
   }
+  digitalWrite(left_dir_pin, LOW);
 }
 
 float diff_determ(float error){
@@ -98,8 +103,8 @@ void loop() {
   // put your main code here, to run repeatedly:
   ECE3_read_IR(sensorValues);
   error = 0;
-  for(int i = 0; i < 8; i++)
-    sum += sensorValues[i];
+  sum = 0; 
+
   for(int i = 0; i < 8; i++)
   {
     sensorNew[i] = sensorValues[i];
@@ -107,13 +112,15 @@ void loop() {
     sensorNew[i] = sensorNew[i]/maximum[i]*1000;
     error += errorValues[i]*sensorNew[i]; 
   }
-
+    for(int i = 0; i < 8; i++)
+    sum += sensorNew[i];
   difference = diff_determ(error);
-  if(sum > 17,000)
+  if((sum+ pastSum)/2 > 6000)
     turnAround();
   else
   { 
     analogWrite(left_pwm_pin, base_motor_left - error*k_p + k_d*difference);
     analogWrite(right_pwm_pin, base_motor_right + error*k_p + k_d*difference);
   }
+  pastSum = sum; 
 }
