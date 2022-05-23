@@ -1,6 +1,10 @@
 #include <ECE3.h> // Used for encoder functionality
 uint16_t sensorValues[8];
 float errorValues[8];
+float minimum[8];
+float maximum[8];
+float sensorNew[8];
+float pastTenError[10]; 
 const int left_nslp_pin = 31;
 const int left_dir_pin  = 29;
 const int left_pwm_pin  = 40;
@@ -9,18 +13,48 @@ const int right_nslp_pin = 11;
 const int right_dir_pin  = 30;
 const int right_pwm_pin  = 39;
 
+float error = 0;
+float k_p = 0.01;
+float k_d = 0; 
+float base_motor_right = 75;
+float base_motor_left = 75;
+int count = 0;  
+int sum = 0; 
+float difference = 0;
 
 void setup() {
   // put your setup code here, to run once:
   ECE3_Init();
-  errorValues[0] = -7.36;
-  errorValues[1] = -977.75;
-  errorValues[2] = -2634.53;
-  errorValues[3] = -1315.49;
-  errorValues[4]= -617.54;
-  errorValues[5] = -386.08;
-  errorValues[6] = 309.68;
-  errorValues[7] = 1427.16;
+  errorValues[0] = -8;
+  errorValues[1] = -4;
+  errorValues[2] = -2;
+  errorValues[3] = -1;
+  errorValues[4] = 1;
+  errorValues[5] = 2;
+  errorValues[6] = 4;
+  errorValues[7] = 8;
+ 
+   minimum[0] = 598;
+   minimum[1] = 551;
+   minimum[2] = 643;
+   minimum[3] = 644;
+   minimum[4] = 551;
+   minimum[5]= 690;
+   minimum[6] = 690;
+   minimum[7]= 715;
+  
+   maximum[0] = 850;
+   maximum[1] = 754;
+   maximum[2] = 1186;
+   maximum[3] = 1066.5;
+   maximum[4] = 1073.6;
+   maximum[5] = 379;
+   maximum[6] = 1092;
+   maximum[7] = 1781;
+
+   for(int i = 0; i < 10; i++)
+    pastTenError[i] = 0;
+
   Serial.begin(9600); // set the data rate in bits per second for serial data transmission
   pinMode(left_nslp_pin,OUTPUT);
   pinMode(left_dir_pin,OUTPUT);
@@ -33,22 +67,53 @@ void setup() {
   digitalWrite(left_nslp_pin,HIGH);
   digitalWrite(right_dir_pin,LOW);
   digitalWrite(right_nslp_pin,HIGH);
-  analogWrite(left_pwm_pin, 100);
-  analogWrite(right_pwm_pin, 100);
   delay(2000);
+}
+
+void turnAround(){
+  analogWrite(right_pwm_pin, 0);
+  analogWrite(left_pwm_pin, 0);
+  int goalEncoderCount_right = getEncoderCount_right()+180;
+  int goalEncoderCount_left = getEncoderCount_left()+180;
+  delay(100);
+  analogWrite(right_pwm_pin,base_motor_right);
+  analogWrite(left_pwm_pin, base_motor_left);
+  digitalWrite(right_dir_pin, LOW);
+  digitalWrite(left_dir_pin, HIGH);
+  while((goalEncoderCount_right != getEncoderCount_right()) || (goalEncoderCount_left != getEncoderCount_left()))
+  {
+     
+  }
+}
+
+float diff_determ(float error){
+  float add = 0;
+  for(int i = 0; i < 10; i++)
+    add = pastTenError[i];
+  float mean = add/10;
+  return error-mean;
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   ECE3_read_IR(sensorValues);
-  float error = 0;
-  float k_d = .3;
-  float k_p = 100;
+  error = 0;
+  for(int i = 0; i < 8; i++)
+    sum += sensorValues[i];
+  for(int i = 0; i < 8; i++)
+  {
+    sensorNew[i] = sensorValues[i];
+    sensorNew[i] -= minimum[i];
+    sensorNew[i] = sensorNew[i]/maximum[i]*1000;
+    error += errorValues[i]*sensorNew[i]; 
+  }
 
-  for(int i = 0; i = 8; i++)
-    error += errorValues[i]*sensorValues[i]; 
-  analogWrite(left_pwm_pin, k_p + error*k_d);
-  digitalWrite(left_dir_pin, error*-1/abs(error));
-  analogWrite(right_pwm_pin, k_p - error*k_d);
-  digitalWrite(right_dir_pin, error/abs(error));
+  difference = diff_determ(error);
+  if(sum > 17,000)
+    turnAround();
+  else
+  { 
+    analogWrite(left_pwm_pin, base_motor_left - error*k_p + k_d*difference);
+    analogWrite(right_pwm_pin, base_motor_right + error*k_p + k_d*difference);
+  }
 }
