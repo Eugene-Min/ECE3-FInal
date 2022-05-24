@@ -49,7 +49,7 @@ void setup() {
    maximum[2] = 1186;
    maximum[3] = 1066.5;
    maximum[4] = 1073.6;
-   maximum[5] = 379;
+   maximum[5] = 1000;
    maximum[6] = 1092;
    maximum[7] = 1781;
 
@@ -63,7 +63,7 @@ void setup() {
   pinMode(right_nslp_pin,OUTPUT);
   pinMode(right_dir_pin,OUTPUT);
   pinMode(right_pwm_pin,OUTPUT);
-
+  pinMode(41, OUTPUT);
   digitalWrite(left_dir_pin,LOW);
   digitalWrite(left_nslp_pin,HIGH);
   digitalWrite(right_dir_pin,LOW);
@@ -72,21 +72,14 @@ void setup() {
 }
 
 void turnAround(){
-  analogWrite(right_pwm_pin, 0);
-  analogWrite(left_pwm_pin, 0);
-  int goalEncoderCount_right = getEncoderCount_right()+360;
-  int goalEncoderCount_left = getEncoderCount_left()+360;
+  int goalEncoderCount_right = getEncoderCount_right()+220;
+  int goalEncoderCount_left = getEncoderCount_left()+220;
   analogWrite(right_pwm_pin,255);
   analogWrite(left_pwm_pin, 255);
   digitalWrite(right_dir_pin, LOW);
   digitalWrite(left_dir_pin, HIGH);
   while((goalEncoderCount_right >= getEncoderCount_right()) || (goalEncoderCount_left >= getEncoderCount_left()))
   {
-    Serial.print("Goal:");
-    Serial.print(goalEncoderCount_right);
-    Serial.println();
-    Serial.println(getEncoderCount_right());  
-    delay(50);  
   }
   digitalWrite(left_dir_pin, LOW);
 }
@@ -112,14 +105,29 @@ void loop() {
     sensorNew[i] = sensorNew[i]/maximum[i]*1000;
     error += errorValues[i]*sensorNew[i]; 
   }
-    for(int i = 0; i < 8; i++)
+  
+  for(int i = 0; i < 8; i++)
+  {
     sum += sensorNew[i];
+  }
+
+//    for (unsigned char i = 0; i < 8; i++)
+//  {
+//    Serial.print(sensorNew[i]);
+//    Serial.print('\t'); // tab to format the raw data into columns in the Serial monitor
+//  }
+//  Serial.println();
+  
   difference = diff_determ(error);
-  if((sum+ pastSum)/2 > 6000)
+  if(((sum + pastSum)/2) > 9000)
+  {
+    digitalWrite(41, HIGH);
     turnAround();
+    digitalWrite(41, LOW);
+  }
   else
   { 
-    analogWrite(left_pwm_pin, base_motor_left - error*k_p + k_d*difference);
+    analogWrite(left_pwm_pin, base_motor_left - error*k_p - k_d*difference);
     analogWrite(right_pwm_pin, base_motor_right + error*k_p + k_d*difference);
   }
   pastSum = sum; 
