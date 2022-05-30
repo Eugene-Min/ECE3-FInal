@@ -1,4 +1,4 @@
-#include <ECE3.h> // Used for encoder functionality
+       #include <ECE3.h> // Used for encoder functionality
 uint16_t sensorValues[8];
 float errorValues[8];
 float minimum[8];
@@ -15,13 +15,15 @@ const int right_pwm_pin  = 39;
 
 float error = 0;
 float k_p = 0.01;
-float k_d = 0; 
-float base_motor_right = 75;
-float base_motor_left = 75;
+float k_d = 0.04; 
+float base_motor_right = 70;
+float base_motor_left = 70;
 int count = 0;  
 int sum = 0; 
 float difference = 0;
 float pastSum = 0; 
+int numOfTurns = 0; 
+float pastError = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -49,7 +51,7 @@ void setup() {
    maximum[2] = 1186;
    maximum[3] = 1066.5;
    maximum[4] = 1073.6;
-   maximum[5] = 1000;
+   maximum[5] = 1030;
    maximum[6] = 1092;
    maximum[7] = 1781;
 
@@ -72,8 +74,8 @@ void setup() {
 }
 
 void turnAround(){
-  int goalEncoderCount_right = getEncoderCount_right()+220;
-  int goalEncoderCount_left = getEncoderCount_left()+220;
+  int goalEncoderCount_right = getEncoderCount_right()+200;
+  int goalEncoderCount_left = getEncoderCount_left()+200;
   analogWrite(right_pwm_pin,255);
   analogWrite(left_pwm_pin, 255);
   digitalWrite(right_dir_pin, LOW);
@@ -84,13 +86,18 @@ void turnAround(){
   digitalWrite(left_dir_pin, LOW);
 }
 
-float diff_determ(float error){
-  float add = 0;
-  for(int i = 0; i < 10; i++)
-    add = pastTenError[i];
-  float mean = add/10;
-  return error-mean;
-}
+//float diff_determ(float error){
+//  float add = 0;
+//  for(int i = 0; i < 10; i++)
+//    add += pastTenError[i];
+//  float mean = add/10;
+//  for(int i = 1; i < 10; i++)
+//  {
+//    pastTenError[i-1] = pastTenError[i]; 
+//  }
+//  pastTenError[9] = error; 
+//  return error-mean;
+//}
 
 void loop() {
   // put your main code here, to run repeatedly:
@@ -111,18 +118,21 @@ void loop() {
     sum += sensorNew[i];
   }
 
-//    for (unsigned char i = 0; i < 8; i++)
-//  {
-//    Serial.print(sensorNew[i]);
-//    Serial.print('\t'); // tab to format the raw data into columns in the Serial monitor
-//  }
-//  Serial.println();
-  
-  difference = diff_determ(error);
-  if(((sum + pastSum)/2) > 9000)
+    difference = error - pastError; 
+//  difference = diff_determ(error);
+  if(((sum + pastSum)/2) > 8500)
   {
     digitalWrite(41, HIGH);
-    turnAround();
+    numOfTurns++;
+    if(numOfTurns >= 2)
+    {
+      base_motor_left = 0;
+      base_motor_right = 0;
+      k_p = 0; 
+      k_d = 0; 
+    }
+    else
+     turnAround();
     digitalWrite(41, LOW);
   }
   else
@@ -131,4 +141,5 @@ void loop() {
     analogWrite(right_pwm_pin, base_motor_right + error*k_p + k_d*difference);
   }
   pastSum = sum; 
+  pastError = error; 
 }
